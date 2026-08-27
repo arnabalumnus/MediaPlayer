@@ -52,6 +52,8 @@ fun VideoPlayerControls(
     isFullscreen: Boolean,
     keepScreenOn: Boolean,
     resizeModeLabel: String,
+    isCasting: Boolean,
+    castDeviceName: String?,
     onBack: () -> Unit,
     onPlayPause: () -> Unit,
     onSeekBackward: () -> Unit,
@@ -94,6 +96,7 @@ fun VideoPlayerControls(
                 Icon(Icons.Filled.AspectRatio, contentDescription = "Cycle screen fit: $resizeModeLabel", tint = Color.White)
                 Text(resizeModeLabel, color = Color.White, style = MaterialTheme.typography.labelMedium)
             }
+            CastButton(modifier = Modifier.size(40.dp))
             IconButton(onClick = onEnterPip) {
                 Icon(Icons.Filled.PictureInPictureAlt, contentDescription = "Picture-in-picture", tint = Color.White)
             }
@@ -111,6 +114,19 @@ fun VideoPlayerControls(
                     tint = Color.White
                 )
             }
+        }
+
+        if (isCasting) {
+            Text(
+                text = "Casting to ${castDeviceName ?: "TV"}",
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 56.dp)
+                    .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(12.dp))
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            )
         }
 
         // Center transport controls

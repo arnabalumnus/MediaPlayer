@@ -1,5 +1,6 @@
 package com.arnab.mediaplayer.ui.video
 
+import android.Manifest
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -8,14 +9,18 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.drawable.Icon
 import android.media.AudioManager
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.util.Rational
 import android.view.WindowManager
-import androidx.activity.ComponentActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -34,10 +39,14 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.arnab.mediaplayer.cast.CastController
+import com.arnab.mediaplayer.cast.LocalHttpMediaServer
+import com.arnab.mediaplayer.cast.LocalNetworkUtils
 import com.arnab.mediaplayer.data.model.VideoItem
 import com.arnab.mediaplayer.ui.theme.MediaPlayerTheme
+import java.io.IOException
 
-class VideoPlayerActivity : ComponentActivity() {
+class VideoPlayerActivity : FragmentActivity() {
 
     companion object {
         const val EXTRA_VIDEO = "extra_video"
@@ -49,9 +58,14 @@ class VideoPlayerActivity : ComponentActivity() {
 
     private lateinit var player: ExoPlayer
     private lateinit var audioManager: AudioManager
+    private lateinit var castController: CastController
+    private lateinit var httpServer: LocalHttpMediaServer
     private var video: VideoItem? = null
 
     private val isInPipState = mutableStateOf(false)
+
+    private val nearbyWifiPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     private val pipReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -87,6 +101,16 @@ class VideoPlayerActivity : ComponentActivity() {
             player.playWhenReady = true
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED
+        ) {
+            nearbyWifiPermissionLauncher.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
+        }
+
+        castController = CastController(this)
+        httpServer = LocalHttpMediaServer(this)
+        video?.let { setUpCasting(it) }
+
         // Keep the system PiP action (play/pause) in sync while the small PiP window is open.
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -113,6 +137,7 @@ class VideoPlayerActivity : ComponentActivity() {
                         audioManager = audioManager,
                         window = window,
                         isInPictureInPicture = isInPip,
+                        castController = castController,
                         onBack = { finish() },
                         onToggleFullscreen = ::applyFullscreen,
                         onToggleKeepScreenOn = ::applyKeepScreenOn,
@@ -124,6 +149,27 @@ class VideoPlayerActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /** Starts the local HTTP server and queues a Cast load request pointing at it. */
+    private fun setUpCasting(item: VideoItem) {
+        val mimeType = contentResolver.getType(item.uri) ?: "video/mp4"
+        httpServer.mediaUri = item.uri
+        httpServer.mimeType = mimeType
+
+        try {
+            httpServer.start(30_000, false)
+        } catch (e: IOException) {
+            Log.w("VideoPlayerActivity", "Could not start local cast server: ${e.message}")
+            return
+        }
+
+        val localIp = LocalNetworkUtils.getLocalIpAddress() ?: run {
+            Log.w("VideoPlayerActivity", "Could not resolve a LAN IP address for casting")
+            return
+        }
+        val url = "http://$localIp:${httpServer.listeningPort}${LocalHttpMediaServer.MEDIA_PATH}"
+        castController.prepareToCast(url, item.title, mimeType) { player.currentPosition }
     }
 
     private fun applyFullscreen(enabled: Boolean) {
@@ -212,5 +258,7 @@ class VideoPlayerActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(pipReceiver)
+        httpServer.stop()
+        castController.release()
     }
 }

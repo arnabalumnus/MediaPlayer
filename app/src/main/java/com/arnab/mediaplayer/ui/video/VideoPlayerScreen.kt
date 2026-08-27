@@ -28,6 +28,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import com.arnab.mediaplayer.cast.CastController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
@@ -53,6 +54,7 @@ fun VideoPlayerScreen(
     audioManager: AudioManager,
     window: Window,
     isInPictureInPicture: Boolean,
+    castController: CastController,
     onBack: () -> Unit,
     onToggleFullscreen: (Boolean) -> Unit,
     onToggleKeepScreenOn: (Boolean) -> Unit,
@@ -82,21 +84,42 @@ fun VideoPlayerScreen(
         )
     }
 
-    // Poll playback position/duration and mirror play/pause + completion state.
+    val isCasting by castController.isCasting
+    val castDeviceName by castController.castDeviceName
+
+    // Poll playback position/duration and mirror play/pause + completion state, switching
+    // between the local player and the remote Cast session depending on which is active.
     LaunchedEffect(player) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                playbackState = playbackState.copy(isPlaying = isPlaying)
+                if (!castController.isCasting.value) {
+                    playbackState = playbackState.copy(isPlaying = isPlaying)
+                }
             }
         }
         player.addListener(listener)
         while (isActive) {
-            playbackState = playbackState.copy(
-                isPlaying = player.isPlaying,
-                positionMs = player.currentPosition.coerceAtLeast(0L),
-                durationMs = player.duration.coerceAtLeast(0L)
-            )
+            playbackState = if (castController.isCasting.value) {
+                playbackState.copy(
+                    isPlaying = castController.isRemotePlaying(),
+                    positionMs = castController.remotePositionMs(),
+                    durationMs = castController.remoteDurationMs()
+                )
+            } else {
+                playbackState.copy(
+                    isPlaying = player.isPlaying,
+                    positionMs = player.currentPosition.coerceAtLeast(0L),
+                    durationMs = player.duration.coerceAtLeast(0L)
+                )
+            }
             delay(500)
+        }
+    }
+
+    // Stop the local playback/sound once the video has handed off to the TV.
+    LaunchedEffect(isCasting) {
+        if (isCasting) {
+            player.pause()
         }
     }
 
@@ -208,11 +231,32 @@ fun VideoPlayerScreen(
                     isFullscreen = isFullscreen,
                     keepScreenOn = keepScreenOn,
                     resizeModeLabel = resizeModes[resizeModeIndex].second,
+                    isCasting = isCasting,
+                    castDeviceName = castDeviceName,
                     onBack = onBack,
-                    onPlayPause = { if (player.isPlaying) player.pause() else player.play() },
-                    onSeekBackward = { player.seekTo((player.currentPosition - 10_000).coerceAtLeast(0)) },
-                    onSeekForward = { player.seekTo((player.currentPosition + 10_000).coerceAtMost(player.duration.coerceAtLeast(0))) },
-                    onSeek = { player.seekTo(it) },
+                    onPlayPause = {
+                        if (isCasting) {
+                            if (castController.isRemotePlaying()) castController.pauseRemote() else castController.playRemote()
+                        } else {
+                            if (player.isPlaying) player.pause() else player.play()
+                        }
+                    },
+                    onSeekBackward = {
+                        if (isCasting) {
+                            castController.seekRemote((castController.remotePositionMs() - 10_000).coerceAtLeast(0))
+                        } else {
+                            player.seekTo((player.currentPosition - 10_000).coerceAtLeast(0))
+                        }
+                    },
+                    onSeekForward = {
+                        if (isCasting) {
+                            val cappedEnd = castController.remoteDurationMs().coerceAtLeast(0)
+                            castController.seekRemote((castController.remotePositionMs() + 10_000).coerceAtMost(cappedEnd))
+                        } else {
+                            player.seekTo((player.currentPosition + 10_000).coerceAtMost(player.duration.coerceAtLeast(0)))
+                        }
+                    },
+                    onSeek = { if (isCasting) castController.seekRemote(it) else player.seekTo(it) },
                     onToggleFullscreen = {
                         isFullscreen = !isFullscreen
                         onToggleFullscreen(isFullscreen)

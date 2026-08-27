@@ -38,9 +38,44 @@ The project was verified to build from the command line with
     The system's floating PiP window gets a working play/pause action (wired
     through a `BroadcastReceiver`); the in-app overlay controls/gestures are
     hidden while in PiP since the window is too small for them.
-  - Custom Compose transport controls: play/pause, ±10s seek.
+  - **Cast to TV** — a `MediaRouteButton` in the top bar opens the standard
+    Google Cast device picker; picking a Chromecast-built-in Android TV on the
+    same Wi-Fi hands the currently playing video off to it. See "Casting" below
+    for how this actually works and what's needed to test it.
+  - Custom Compose transport controls: play/pause, ±10s seek — these route to
+    the remote device instead of the local player while casting.
   - Left-half vertical drag = screen brightness, right-half vertical drag =
-    media volume, tap = show/hide controls.
+    media volume, tap = show/hide controls (these still control the phone,
+    not the TV, while casting).
+
+## Casting
+
+`cast/` implements "cast to TV" using the Google Cast SDK:
+
+- `CastOptionsProviderImpl` registers the default media receiver with the Cast
+  framework (declared in the manifest's `OPTIONS_PROVIDER_CLASS_NAME` meta-data).
+- `LocalHttpMediaServer` (built on NanoHTTPD) serves the currently playing
+  video's bytes over plain HTTP on the phone's LAN address — a Cast receiver
+  can't resolve our `content://` URI, it needs an HTTP URL it can fetch itself.
+  It supports `Range` requests so the TV can seek.
+- `CastController` owns the `CastSession`/`SessionManager` lifecycle: once a
+  session connects it loads the HTTP URL onto the receiver (resuming from
+  wherever local playback was), and forwards play/pause/seek to the remote
+  `RemoteMediaClient` instead of the local `ExoPlayer`.
+- `CastButton` wraps the framework's `MediaRouteButton`; it renders the device
+  picker and swaps its own connected/disconnected icon automatically.
+
+**To actually test this** you need: a phone and an Android TV (or any
+Chromecast-built-in device) on the *same* Wi-Fi network — casting relies on
+mDNS discovery over the LAN, so it won't find anything across mobile data,
+a guest network, or client-isolated Wi-Fi. On API 33+ the app requests
+`NEARBY_WIFI_DEVICES` at launch (declined permission just means no devices
+show up in the picker). I couldn't verify this end-to-end here — no physical
+TV/Cast receiver in this environment — so I've confirmed it *compiles and
+wires up correctly*, but real-device testing is worth doing before you rely
+on it. If the cast icon does nothing at all, check `adb logcat` for the
+`CastController`/`VideoPlayerActivity` warnings it logs (outdated Play
+Services, LAN IP not resolvable, port already in use, etc).
 
 ## Notes / interpretive calls
 
@@ -48,8 +83,10 @@ The brief used a couple of ambiguous terms I resolved as follows — flag if you
 meant something different:
 
 - **"ScreenOnscreen feature"** → keep-screen-on toggle during video playback.
-- **"Cust screen feature"** → a custom aspect-ratio/scale toggle (Fit/Fill/Crop)
-  on the video surface.
+- **"Cust screen feature"** → originally implemented as an aspect-ratio/scale
+  toggle (Fit/Fill/Crop); per a later request this was actually meant as
+  **"Cast screen"** and is now the Cast-to-TV feature described above. The
+  aspect-ratio toggle is still there too (in the top bar, next to the title).
 - Video "backward"/"forward" controls → ±10 second seek buttons (there's no
   video queue/playlist — only the audio tab has next/previous track).
 
