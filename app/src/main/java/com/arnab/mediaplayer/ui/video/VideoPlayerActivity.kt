@@ -1,6 +1,5 @@
 package com.arnab.mediaplayer.ui.video
 
-import android.Manifest
 import android.app.PendingIntent
 import android.app.PictureInPictureParams
 import android.app.RemoteAction
@@ -9,18 +8,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ActivityInfo
-import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.drawable.Icon
 import android.media.AudioManager
-import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.util.Rational
 import android.view.WindowManager
-import androidx.fragment.app.FragmentActivity
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -39,14 +35,14 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import com.arnab.mediaplayer.cast.CastController
-import com.arnab.mediaplayer.cast.LocalHttpMediaServer
-import com.arnab.mediaplayer.cast.LocalNetworkUtils
+import com.arnab.mediaplayer.dlna.DlnaController
+import com.arnab.mediaplayer.dlna.LocalHttpMediaServer
+import com.arnab.mediaplayer.dlna.LocalNetworkUtils
 import com.arnab.mediaplayer.data.model.VideoItem
 import com.arnab.mediaplayer.ui.theme.MediaPlayerTheme
 import java.io.IOException
 
-class VideoPlayerActivity : FragmentActivity() {
+class VideoPlayerActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_VIDEO = "extra_video"
@@ -58,14 +54,11 @@ class VideoPlayerActivity : FragmentActivity() {
 
     private lateinit var player: ExoPlayer
     private lateinit var audioManager: AudioManager
-    private lateinit var castController: CastController
+    private lateinit var dlnaController: DlnaController
     private lateinit var httpServer: LocalHttpMediaServer
     private var video: VideoItem? = null
 
     private val isInPipState = mutableStateOf(false)
-
-    private val nearbyWifiPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     private val pipReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -101,13 +94,7 @@ class VideoPlayerActivity : FragmentActivity() {
             player.playWhenReady = true
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED
-        ) {
-            nearbyWifiPermissionLauncher.launch(Manifest.permission.NEARBY_WIFI_DEVICES)
-        }
-
-        castController = CastController(this)
+        dlnaController = DlnaController(this)
         httpServer = LocalHttpMediaServer(this)
         video?.let { setUpCasting(it) }
 
@@ -137,7 +124,7 @@ class VideoPlayerActivity : FragmentActivity() {
                         audioManager = audioManager,
                         window = window,
                         isInPictureInPicture = isInPip,
-                        castController = castController,
+                        dlnaController = dlnaController,
                         onBack = { finish() },
                         onToggleFullscreen = ::applyFullscreen,
                         onToggleKeepScreenOn = ::applyKeepScreenOn,
@@ -151,7 +138,7 @@ class VideoPlayerActivity : FragmentActivity() {
         }
     }
 
-    /** Starts the local HTTP server and queues a Cast load request pointing at it. */
+    /** Starts the local HTTP server and queues a DLNA load request pointing at it. */
     private fun setUpCasting(item: VideoItem) {
         val mimeType = contentResolver.getType(item.uri) ?: "video/mp4"
         httpServer.mediaUri = item.uri
@@ -169,7 +156,7 @@ class VideoPlayerActivity : FragmentActivity() {
             return
         }
         val url = "http://$localIp:${httpServer.listeningPort}${LocalHttpMediaServer.MEDIA_PATH}"
-        castController.prepareToCast(url, item.title, mimeType) { player.currentPosition }
+        dlnaController.prepareToCast(url, item.title, mimeType) { player.currentPosition }
     }
 
     private fun applyFullscreen(enabled: Boolean) {
@@ -259,6 +246,6 @@ class VideoPlayerActivity : FragmentActivity() {
         super.onDestroy()
         unregisterReceiver(pipReceiver)
         httpServer.stop()
-        castController.release()
+        dlnaController.release()
     }
 }

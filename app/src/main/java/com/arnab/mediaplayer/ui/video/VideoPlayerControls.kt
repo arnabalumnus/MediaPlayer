@@ -15,6 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AspectRatio
+import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.CastConnected
 import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.Forward10
@@ -62,7 +64,8 @@ fun VideoPlayerControls(
     onToggleFullscreen: () -> Unit,
     onToggleKeepScreenOn: () -> Unit,
     onCycleResizeMode: () -> Unit,
-    onEnterPip: () -> Unit
+    onEnterPip: () -> Unit,
+    onCastClick: () -> Unit
 ) {
     Box(modifier = Modifier.fillMaxSize()) {
         // Top bar
@@ -96,7 +99,13 @@ fun VideoPlayerControls(
                 Icon(Icons.Filled.AspectRatio, contentDescription = "Cycle screen fit: $resizeModeLabel", tint = Color.White)
                 Text(resizeModeLabel, color = Color.White, style = MaterialTheme.typography.labelMedium)
             }
-            CastButton(modifier = Modifier.size(40.dp))
+            IconButton(onClick = onCastClick) {
+                Icon(
+                    imageVector = if (isCasting) Icons.Filled.CastConnected else Icons.Filled.Cast,
+                    contentDescription = "Cast to device",
+                    tint = Color.White
+                )
+            }
             IconButton(onClick = onEnterPip) {
                 Icon(Icons.Filled.PictureInPictureAlt, contentDescription = "Picture-in-picture", tint = Color.White)
             }

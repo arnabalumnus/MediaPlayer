@@ -28,7 +28,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
-import com.arnab.mediaplayer.cast.CastController
+import com.arnab.mediaplayer.dlna.DlnaController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
@@ -54,7 +54,7 @@ fun VideoPlayerScreen(
     audioManager: AudioManager,
     window: Window,
     isInPictureInPicture: Boolean,
-    castController: CastController,
+    dlnaController: DlnaController,
     onBack: () -> Unit,
     onToggleFullscreen: (Boolean) -> Unit,
     onToggleKeepScreenOn: (Boolean) -> Unit,
@@ -73,6 +73,7 @@ fun VideoPlayerScreen(
     var gestureLabel by remember { mutableStateOf("") }
 
     var aspectBannerText by remember { mutableStateOf<String?>(null) }
+    var showCastDialog by remember { mutableStateOf(false) }
 
     val maxVolume = remember { audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
     var volumeFraction by remember {
@@ -84,26 +85,26 @@ fun VideoPlayerScreen(
         )
     }
 
-    val isCasting by castController.isCasting
-    val castDeviceName by castController.castDeviceName
+    val isCasting by dlnaController.isCasting
+    val castDeviceName by dlnaController.castDeviceName
 
     // Poll playback position/duration and mirror play/pause + completion state, switching
     // between the local player and the remote Cast session depending on which is active.
     LaunchedEffect(player) {
         val listener = object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (!castController.isCasting.value) {
+                if (!dlnaController.isCasting.value) {
                     playbackState = playbackState.copy(isPlaying = isPlaying)
                 }
             }
         }
         player.addListener(listener)
         while (isActive) {
-            playbackState = if (castController.isCasting.value) {
+            playbackState = if (dlnaController.isCasting.value) {
                 playbackState.copy(
-                    isPlaying = castController.isRemotePlaying(),
-                    positionMs = castController.remotePositionMs(),
-                    durationMs = castController.remoteDurationMs()
+                    isPlaying = dlnaController.isRemotePlaying(),
+                    positionMs = dlnaController.remotePositionMs(),
+                    durationMs = dlnaController.remoteDurationMs()
                 )
             } else {
                 playbackState.copy(
@@ -236,27 +237,27 @@ fun VideoPlayerScreen(
                     onBack = onBack,
                     onPlayPause = {
                         if (isCasting) {
-                            if (castController.isRemotePlaying()) castController.pauseRemote() else castController.playRemote()
+                            if (dlnaController.isRemotePlaying()) dlnaController.pauseRemote() else dlnaController.playRemote()
                         } else {
                             if (player.isPlaying) player.pause() else player.play()
                         }
                     },
                     onSeekBackward = {
                         if (isCasting) {
-                            castController.seekRemote((castController.remotePositionMs() - 10_000).coerceAtLeast(0))
+                            dlnaController.seekRemote((dlnaController.remotePositionMs() - 10_000).coerceAtLeast(0))
                         } else {
                             player.seekTo((player.currentPosition - 10_000).coerceAtLeast(0))
                         }
                     },
                     onSeekForward = {
                         if (isCasting) {
-                            val cappedEnd = castController.remoteDurationMs().coerceAtLeast(0)
-                            castController.seekRemote((castController.remotePositionMs() + 10_000).coerceAtMost(cappedEnd))
+                            val cappedEnd = dlnaController.remoteDurationMs().coerceAtLeast(0)
+                            dlnaController.seekRemote((dlnaController.remotePositionMs() + 10_000).coerceAtMost(cappedEnd))
                         } else {
                             player.seekTo((player.currentPosition + 10_000).coerceAtMost(player.duration.coerceAtLeast(0)))
                         }
                     },
-                    onSeek = { if (isCasting) castController.seekRemote(it) else player.seekTo(it) },
+                    onSeek = { if (isCasting) dlnaController.seekRemote(it) else player.seekTo(it) },
                     onToggleFullscreen = {
                         isFullscreen = !isFullscreen
                         onToggleFullscreen(isFullscreen)
@@ -269,7 +270,11 @@ fun VideoPlayerScreen(
                         resizeModeIndex = (resizeModeIndex + 1) % resizeModes.size
                         aspectBannerText = "Screen: ${resizeModes[resizeModeIndex].second}"
                     },
-                    onEnterPip = onEnterPip
+                    onEnterPip = onEnterPip,
+                    onCastClick = {
+                        showCastDialog = true
+                        dlnaController.discover()
+                    }
                 )
             }
 
@@ -279,6 +284,10 @@ fun VideoPlayerScreen(
 
             aspectBannerText?.let { text ->
                 CenterBanner(text = text)
+            }
+
+            if (showCastDialog) {
+                DlnaDeviceDialog(controller = dlnaController, onDismiss = { showCastDialog = false })
             }
         }
     }

@@ -8,8 +8,6 @@ composeBom = "2024.09.00"
 media3 = "1.4.1"
 coroutines = "1.8.1"
 coil = "2.6.0"
-castFramework = "21.5.0"
-mediarouter = "1.6.0"
 nanohttpd = "2.3.1"
 
 [libraries]
@@ -32,8 +30,6 @@ androidx-media3-common = { group = "androidx.media3", name = "media3-common", ve
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 coil-video = { group = "io.coil-kt", name = "coil-video", version.ref = "coil" }
-play-services-cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version.ref = "castFramework" }
-androidx-mediarouter = { group = "androidx.mediarouter", name = "mediarouter", version.ref = "mediarouter" }
 nanohttpd = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }
 
 [plugins]

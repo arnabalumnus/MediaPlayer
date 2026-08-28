@@ -1,4 +1,4 @@
-package com.arnab.mediaplayer.cast
+package com.arnab.mediaplayer.dlna
 
 import android.content.Context
 import android.net.Uri
@@ -6,9 +6,9 @@ import fi.iki.elonen.NanoHTTPD
 import java.io.IOException
 
 /**
- * Serves the currently playing local video's bytes over plain HTTP on the LAN, since a
- * Cast receiver (running on the TV) can't resolve our app's `content://` URIs directly —
- * it needs a URL it can fetch itself.
+ * Serves the currently playing local video's bytes over plain HTTP on the LAN, since a DLNA
+ * renderer (running on the TV) can't resolve our app's `content://` URIs directly — it needs
+ * a URL it can fetch itself. Supports `Range` requests so the TV can seek.
  */
 class LocalHttpMediaServer(
     private val context: Context,
