@@ -2,6 +2,7 @@ package com.arnab.mediaplayer.ui.dashboard
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,12 +30,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -47,6 +51,7 @@ import com.arnab.mediaplayer.ui.audio.AudioTabScreen
 import com.arnab.mediaplayer.ui.components.ViewModeToggleAction
 import com.arnab.mediaplayer.ui.components.glassPanel
 import com.arnab.mediaplayer.ui.components.glassSource
+import com.arnab.mediaplayer.ui.components.tvFocusHalo
 import com.arnab.mediaplayer.ui.theme.PillShape
 import com.arnab.mediaplayer.ui.video.VideoTabScreen
 import com.arnab.mediaplayer.viewmodel.AudioViewModel
@@ -67,6 +72,8 @@ fun DashboardScreen(
     val pagerState = rememberPagerState(pageCount = { 2 })
     val scope = rememberCoroutineScope()
     val hazeState = remember { HazeState() }
+    val initialTabFocusRequester = remember { FocusRequester() }
+    val permissionButtonFocusRequester = remember { FocusRequester() }
 
     val audioItems by audioViewModel.audioItems.collectAsStateWithLifecycle()
     val audioViewMode by audioViewModel.viewMode.collectAsStateWithLifecycle()
@@ -108,7 +115,7 @@ fun DashboardScreen(
         ) { padding ->
             Column(modifier = Modifier.padding(top = padding.calculateTopPadding())) {
                 if (!hasPermission) {
-                    PermissionRationale(onRequestPermission)
+                    PermissionRationale(onRequestPermission, permissionButtonFocusRequester)
                     return@Column
                 }
 
@@ -143,12 +150,19 @@ fun DashboardScreen(
                 hazeState = hazeState,
                 selectedIndex = pagerState.currentPage,
                 onSelect = { index -> scope.launch { pagerState.animateScrollToPage(index) } },
+                initialFocusRequester = initialTabFocusRequester,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
                     .padding(bottom = 16.dp)
             )
         }
+    }
+
+    // Give D-pad/remote navigation a sane starting point when the screen first appears -
+    // otherwise there's nothing focused for a TV remote to move away from.
+    LaunchedEffect(hasPermission) {
+        if (hasPermission) initialTabFocusRequester.requestFocus() else permissionButtonFocusRequester.requestFocus()
     }
 }
 
@@ -157,6 +171,7 @@ private fun FloatingTabBar(
     hazeState: HazeState,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
+    initialFocusRequester: FocusRequester,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -172,7 +187,8 @@ private fun FloatingTabBar(
                 icon = Icons.Filled.MusicNote,
                 contentDescription = "Audio",
                 selected = selectedIndex == 0,
-                onClick = { onSelect(0) }
+                onClick = { onSelect(0) },
+                focusRequester = initialFocusRequester
             )
             TabIcon(
                 icon = Icons.Filled.Movie,
@@ -189,7 +205,8 @@ private fun TabIcon(
     icon: ImageVector,
     contentDescription: String,
     selected: Boolean,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    focusRequester: FocusRequester? = null
 ) {
     val indicatorColor by animateColorAsState(
         targetValue = if (selected) MaterialTheme.colorScheme.onPrimary else Color.Transparent,
@@ -199,14 +216,22 @@ private fun TabIcon(
         targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.75f),
         label = "tabIconTint"
     )
+    val interactionSource = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .size(52.dp)
             .clip(CircleShape)
-            .background(indicatorColor),
+            .background(indicatorColor)
+            .tvFocusHalo(interactionSource, CircleShape),
         contentAlignment = Alignment.Center
     ) {
-        IconButton(onClick = onClick) {
+        IconButton(
+            onClick = onClick,
+            interactionSource = interactionSource,
+            modifier = Modifier.then(
+                if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier
+            )
+        ) {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
@@ -217,7 +242,8 @@ private fun TabIcon(
 }
 
 @Composable
-private fun PermissionRationale(onRequestPermission: () -> Unit) {
+private fun PermissionRationale(onRequestPermission: () -> Unit, focusRequester: FocusRequester) {
+    val interactionSource = remember { MutableInteractionSource() }
     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
@@ -228,7 +254,14 @@ private fun PermissionRationale(onRequestPermission: () -> Unit) {
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            Button(onClick = onRequestPermission, modifier = Modifier.padding(top = 16.dp)) {
+            Button(
+                onClick = onRequestPermission,
+                interactionSource = interactionSource,
+                modifier = Modifier
+                    .padding(top = 16.dp)
+                    .focusRequester(focusRequester)
+                    .tvFocusHalo(interactionSource, MaterialTheme.shapes.small)
+            ) {
                 Text("Grant permission")
             }
         }

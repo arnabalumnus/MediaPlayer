@@ -1,6 +1,7 @@
 package com.arnab.mediaplayer.ui.video
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,10 +40,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.arnab.mediaplayer.ui.components.glassPanel
+import com.arnab.mediaplayer.ui.components.tvFocusHalo
 import com.arnab.mediaplayer.util.formatDuration
 import dev.chrisbanes.haze.HazeState
 
@@ -51,6 +55,7 @@ private val PanelShape = RoundedCornerShape(24.dp)
 @Composable
 fun VideoPlayerControls(
     hazeState: HazeState,
+    playPauseFocusRequester: FocusRequester,
     title: String,
     isPlaying: Boolean,
     positionMs: Long,
@@ -81,7 +86,12 @@ fun VideoPlayerControls(
                 .padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onBack) {
+            val backInteraction = remember { MutableInteractionSource() }
+            IconButton(
+                onClick = onBack,
+                interactionSource = backInteraction,
+                modifier = Modifier.tvFocusHalo(backInteraction)
+            ) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
             }
             Text(
@@ -93,10 +103,12 @@ fun VideoPlayerControls(
                     .weight(1f)
                     .padding(horizontal = 4.dp)
             )
+            val resizeInteraction = remember { MutableInteractionSource() }
             Row(
                 modifier = Modifier
                     .clip(CircleShape)
-                    .clickable(onClick = onCycleResizeMode)
+                    .clickable(onClick = onCycleResizeMode, interactionSource = resizeInteraction, indication = null)
+                    .tvFocusHalo(resizeInteraction)
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -105,17 +117,32 @@ fun VideoPlayerControls(
                 Text(resizeModeLabel, color = Color.White, style = MaterialTheme.typography.labelMedium)
             }
             CastButton(modifier = Modifier.size(40.dp))
-            IconButton(onClick = onEnterPip) {
+            val pipInteraction = remember { MutableInteractionSource() }
+            IconButton(
+                onClick = onEnterPip,
+                interactionSource = pipInteraction,
+                modifier = Modifier.tvFocusHalo(pipInteraction)
+            ) {
                 Icon(Icons.Filled.PictureInPictureAlt, contentDescription = "Picture-in-picture", tint = Color.White)
             }
-            IconButton(onClick = onToggleKeepScreenOn) {
+            val screenOnInteraction = remember { MutableInteractionSource() }
+            IconButton(
+                onClick = onToggleKeepScreenOn,
+                interactionSource = screenOnInteraction,
+                modifier = Modifier.tvFocusHalo(screenOnInteraction)
+            ) {
                 Icon(
                     imageVector = if (keepScreenOn) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                     contentDescription = "Keep screen on",
                     tint = Color.White
                 )
             }
-            IconButton(onClick = onToggleFullscreen) {
+            val fullscreenInteraction = remember { MutableInteractionSource() }
+            IconButton(
+                onClick = onToggleFullscreen,
+                interactionSource = fullscreenInteraction,
+                modifier = Modifier.tvFocusHalo(fullscreenInteraction)
+            ) {
                 Icon(
                     imageVector = if (isFullscreen) Icons.Filled.FullscreenExit else Icons.Filled.Fullscreen,
                     contentDescription = "Fullscreen",
@@ -143,14 +170,23 @@ fun VideoPlayerControls(
             horizontalArrangement = Arrangement.spacedBy(32.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onSeekBackward, modifier = Modifier.size(56.dp)) {
+            val rewindInteraction = remember { MutableInteractionSource() }
+            IconButton(
+                onClick = onSeekBackward,
+                interactionSource = rewindInteraction,
+                modifier = Modifier.size(56.dp).tvFocusHalo(rewindInteraction)
+            ) {
                 Icon(Icons.Filled.Replay10, contentDescription = "Rewind 10 seconds", tint = Color.White, modifier = Modifier.size(36.dp))
             }
+            val playPauseInteraction = remember { MutableInteractionSource() }
             IconButton(
                 onClick = onPlayPause,
+                interactionSource = playPauseInteraction,
                 modifier = Modifier
                     .size(76.dp)
                     .glassPanel(hazeState, CircleShape, tint = MaterialTheme.colorScheme.primary)
+                    .tvFocusHalo(playPauseInteraction)
+                    .focusRequester(playPauseFocusRequester)
             ) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
@@ -159,7 +195,12 @@ fun VideoPlayerControls(
                     modifier = Modifier.size(44.dp)
                 )
             }
-            IconButton(onClick = onSeekForward, modifier = Modifier.size(56.dp)) {
+            val forwardInteraction = remember { MutableInteractionSource() }
+            IconButton(
+                onClick = onSeekForward,
+                interactionSource = forwardInteraction,
+                modifier = Modifier.size(56.dp).tvFocusHalo(forwardInteraction)
+            ) {
                 Icon(Icons.Filled.Forward10, contentDescription = "Forward 10 seconds", tint = Color.White, modifier = Modifier.size(36.dp))
             }
         }

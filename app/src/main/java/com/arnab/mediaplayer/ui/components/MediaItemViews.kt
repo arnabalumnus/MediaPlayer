@@ -2,6 +2,7 @@ package com.arnab.mediaplayer.ui.components
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -51,7 +52,12 @@ private val ThumbnailShape = RoundedCornerShape(14.dp)
 
 @Composable
 fun ViewModeToggleAction(viewMode: ViewMode, onToggle: () -> Unit) {
-    IconButton(onClick = onToggle) {
+    val interactionSource = remember { MutableInteractionSource() }
+    IconButton(
+        onClick = onToggle,
+        interactionSource = interactionSource,
+        modifier = Modifier.tvFocusHalo(interactionSource)
+    ) {
         Icon(
             imageVector = if (viewMode == ViewMode.LIST) Icons.Filled.GridView else Icons.AutoMirrored.Filled.ViewList,
             contentDescription = "Toggle view"
@@ -62,6 +68,7 @@ fun ViewModeToggleAction(viewMode: ViewMode, onToggle: () -> Unit) {
 /** Soft translucent card shared by every list row / grid cell — the "glass" tile look. */
 @Composable
 private fun MediaCard(onClick: () -> Unit, content: @Composable () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
     Card(
         onClick = onClick,
         shape = CardShape,
@@ -70,7 +77,10 @@ private fun MediaCard(onClick: () -> Unit, content: @Composable () -> Unit) {
         ),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        modifier = Modifier.fillMaxWidth()
+        interactionSource = interactionSource,
+        modifier = Modifier
+            .fillMaxWidth()
+            .tvFocusHalo(interactionSource, CardShape)
     ) {
         content()
     }

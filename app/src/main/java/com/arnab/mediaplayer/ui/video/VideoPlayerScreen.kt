@@ -3,6 +3,7 @@ package com.arnab.mediaplayer.ui.video
 import android.media.AudioManager
 import android.view.ViewGroup
 import android.view.Window
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -21,6 +22,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
@@ -34,6 +42,12 @@ import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
+
+/** D-pad directions/select keys - any of these should wake the hidden control overlay on a TV. */
+private fun isNavigationKey(key: Key): Boolean = key in setOf(
+    Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight,
+    Key.DirectionCenter, Key.Enter, Key.NumPadEnter
+)
 
 private val resizeModes = listOf(
     AspectRatioFrameLayout.RESIZE_MODE_FIT to "Fit",
@@ -64,6 +78,8 @@ fun VideoPlayerScreen(
 ) {
     val context = LocalContext.current
     val hazeState = remember { HazeState() }
+    val rootFocusRequester = remember { FocusRequester() }
+    val playPauseFocusRequester = remember { FocusRequester() }
 
     var playbackState by remember { mutableStateOf(VideoPlaybackUiState()) }
     var isFullscreen by remember { mutableStateOf(false) }
@@ -134,6 +150,19 @@ fun VideoPlayerScreen(
         }
     }
 
+    // On a touchscreen, tapping the gesture zones below brings the (always-composed) overlay
+    // back. A D-pad has no "tap" - once the controls are hidden there's nothing left focused
+    // to press a direction from, so a remote user would be stuck. Move focus onto this root
+    // Box whenever the controls hide, so it can catch the next D-pad press and reveal them
+    // again; move focus onto Play/Pause whenever they're showing so navigation has a start.
+    LaunchedEffect(controlsVisible) {
+        if (controlsVisible) {
+            playPauseFocusRequester.requestFocus()
+        } else {
+            rootFocusRequester.requestFocus()
+        }
+    }
+
     fun showGesture(type: GestureType, fraction: Float) {
         gestureType = type
         gestureFraction = fraction
@@ -154,7 +183,20 @@ fun VideoPlayerScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .focusRequester(rootFocusRequester)
+            .focusable()
+            .onPreviewKeyEvent { keyEvent ->
+                if (!controlsVisible && keyEvent.type == KeyEventType.KeyDown && isNavigationKey(keyEvent.key)) {
+                    controlsVisible = true
+                    true
+                } else {
+                    false
+                }
+            }
+    ) {
         AndroidView(
             modifier = Modifier
                 .fillMaxSize()
@@ -230,6 +272,7 @@ fun VideoPlayerScreen(
             if (controlsVisible) {
                 VideoPlayerControls(
                     hazeState = hazeState,
+                    playPauseFocusRequester = playPauseFocusRequester,
                     title = title,
                     isPlaying = playbackState.isPlaying,
                     positionMs = playbackState.positionMs,

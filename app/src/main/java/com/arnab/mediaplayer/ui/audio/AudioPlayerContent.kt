@@ -1,6 +1,7 @@
 package com.arnab.mediaplayer.ui.audio
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -41,12 +43,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.arnab.mediaplayer.ui.components.tvFocusHalo
 import com.arnab.mediaplayer.util.formatDuration
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,6 +64,9 @@ fun AudioPlayerContent(
     onPrevious: () -> Unit,
     onSeek: (Long) -> Unit
 ) {
+    val playPauseFocusRequester = remember { FocusRequester() }
+    LaunchedEffect(Unit) { playPauseFocusRequester.requestFocus() }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -79,7 +87,12 @@ fun AudioPlayerContent(
                 TopAppBar(
                     title = { Text("Now Playing") },
                     navigationIcon = {
-                        IconButton(onClick = onBack) {
+                        val backInteraction = remember { MutableInteractionSource() }
+                        IconButton(
+                            onClick = onBack,
+                            interactionSource = backInteraction,
+                            modifier = Modifier.tvFocusHalo(backInteraction)
+                        ) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
@@ -163,15 +176,25 @@ fun AudioPlayerContent(
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = onPrevious, enabled = uiState.hasPrevious) {
+                            val previousInteraction = remember { MutableInteractionSource() }
+                            IconButton(
+                                onClick = onPrevious,
+                                enabled = uiState.hasPrevious,
+                                interactionSource = previousInteraction,
+                                modifier = Modifier.tvFocusHalo(previousInteraction)
+                            ) {
                                 Icon(Icons.Filled.SkipPrevious, contentDescription = "Previous", modifier = Modifier.size(32.dp))
                             }
+                            val playPauseInteraction = remember { MutableInteractionSource() }
                             IconButton(
                                 onClick = onPlayPause,
+                                interactionSource = playPauseInteraction,
                                 modifier = Modifier
                                     .size(68.dp)
                                     .clip(CircleShape)
                                     .background(MaterialTheme.colorScheme.primary)
+                                    .tvFocusHalo(playPauseInteraction)
+                                    .focusRequester(playPauseFocusRequester)
                             ) {
                                 Icon(
                                     imageVector = if (uiState.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
@@ -180,7 +203,13 @@ fun AudioPlayerContent(
                                     modifier = Modifier.size(36.dp)
                                 )
                             }
-                            IconButton(onClick = onNext, enabled = uiState.hasNext) {
+                            val nextInteraction = remember { MutableInteractionSource() }
+                            IconButton(
+                                onClick = onNext,
+                                enabled = uiState.hasNext,
+                                interactionSource = nextInteraction,
+                                modifier = Modifier.tvFocusHalo(nextInteraction)
+                            ) {
                                 Icon(Icons.Filled.SkipNext, contentDescription = "Next", modifier = Modifier.size(32.dp))
                             }
                         }
