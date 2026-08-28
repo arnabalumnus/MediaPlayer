@@ -32,7 +32,6 @@ androidx-media3-session = { group = "androidx.media3", name = "media3-session", 
 androidx-media3-common = { group = "androidx.media3", name = "media3-common", version.ref = "media3" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
-coil-video = { group = "io.coil-kt", name = "coil-video", version.ref = "coil" }
 play-services-cast-framework = { group = "com.google.android.gms", name = "play-services-cast-framework", version.ref = "castFramework" }
 androidx-mediarouter = { group = "androidx.mediarouter", name = "mediarouter", version.ref = "mediarouter" }
 nanohttpd = { group = "org.nanohttpd", name = "nanohttpd", version.ref = "nanohttpd" }

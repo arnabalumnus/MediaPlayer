@@ -3,6 +3,18 @@
 A Jetpack Compose Android app that scans local storage for audio (`Music/`) and
 video (`Movies/`) and plays them back.
 
+## Screenshots
+
+Captured on-device (a Lenovo Android 12 tablet running a debug build).
+
+| Dashboard — Audio | Dashboard — Video |
+| --- | --- |
+| ![Dashboard, Audio tab](screenshots/dashboard_audio.png) | ![Dashboard, Video tab grid](screenshots/dashboard_video_grid.png) |
+
+| Video player (glass controls) | Audio player |
+| --- | --- |
+| ![Video player with frosted-glass controls over playing video](screenshots/video_player_glass.png) | ![Now Playing audio screen](screenshots/audio_player.png) |
+
 ## Opening the project
 
 1. Open this folder in Android Studio (Koala/Ladybug or newer) and let it sync.

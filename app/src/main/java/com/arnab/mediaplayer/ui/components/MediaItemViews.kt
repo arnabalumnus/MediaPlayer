@@ -23,6 +23,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,14 +34,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.compose.AsyncImagePainter
+import com.arnab.mediaplayer.data.VideoThumbnailCache
 import com.arnab.mediaplayer.data.model.AudioItem
 import com.arnab.mediaplayer.data.model.VideoItem
 import com.arnab.mediaplayer.util.ViewMode
 import com.arnab.mediaplayer.util.formatDuration
+import java.io.File
 
 private val CardShape = RoundedCornerShape(20.dp)
 private val ThumbnailShape = RoundedCornerShape(14.dp)
@@ -72,7 +76,11 @@ private fun MediaCard(onClick: () -> Unit, content: @Composable () -> Unit) {
     }
 }
 
-/** Thumbnail that shows [icon] as a placeholder/fallback, hiding it once [model] loads successfully. */
+/**
+ * Thumbnail that shows [icon] as a placeholder/fallback, hiding it once [model] loads
+ * successfully. A `null` model just shows the icon — used while a video's cached thumbnail
+ * hasn't been generated yet, so we don't kick off two decodes (ours and Coil's) at once.
+ */
 @Composable
 private fun Thumbnail(model: Any?, tint: Color, icon: ImageVector, modifier: Modifier) {
     var showFallback by remember(model) { mutableStateOf(true) }
@@ -80,17 +88,39 @@ private fun Thumbnail(model: Any?, tint: Color, icon: ImageVector, modifier: Mod
         modifier = modifier.background(tint.copy(alpha = 0.18f)),
         contentAlignment = Alignment.Center
     ) {
-        AsyncImage(
-            model = model,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
-            onState = { state -> showFallback = state !is AsyncImagePainter.State.Success }
-        )
+        if (model != null) {
+            AsyncImage(
+                model = model,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                onState = { state -> showFallback = state !is AsyncImagePainter.State.Success }
+            )
+        }
         if (showFallback) {
             Icon(icon, contentDescription = null, tint = tint)
         }
     }
+}
+
+/**
+ * Video thumbnail backed by [VideoThumbnailCache] — the first time a given video is seen this
+ * decodes a frame and persists it to the app's cache dir; every scroll pass after that (and
+ * every future app run) just loads that small cached JPEG instead of re-decoding the video.
+ */
+@Composable
+private fun VideoThumbnail(item: VideoItem, modifier: Modifier) {
+    val context = LocalContext.current
+    var cachedFile by remember(item.id) { mutableStateOf<File?>(null) }
+    LaunchedEffect(item.id) {
+        cachedFile = VideoThumbnailCache.getOrCreate(context, item.id, item.uri)
+    }
+    Thumbnail(
+        model = cachedFile,
+        tint = MaterialTheme.colorScheme.tertiary,
+        icon = Icons.Filled.Movie,
+        modifier = modifier
+    )
 }
 
 @Composable
@@ -171,10 +201,8 @@ fun VideoListRow(item: VideoItem, onClick: () -> Unit) {
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Thumbnail(
-                model = item.uri,
-                tint = MaterialTheme.colorScheme.tertiary,
-                icon = Icons.Filled.Movie,
+            VideoThumbnail(
+                item = item,
                 modifier = Modifier.size(width = 100.dp, height = 60.dp).clip(ThumbnailShape)
             )
             Column(
@@ -202,10 +230,8 @@ fun VideoListRow(item: VideoItem, onClick: () -> Unit) {
 fun VideoGridCell(item: VideoItem, onClick: () -> Unit) {
     MediaCard(onClick = onClick) {
         Column(modifier = Modifier.padding(10.dp)) {
-            Thumbnail(
-                model = item.uri,
-                tint = MaterialTheme.colorScheme.tertiary,
-                icon = Icons.Filled.Movie,
+            VideoThumbnail(
+                item = item,
                 modifier = Modifier
                     .fillMaxWidth()
                     .aspectRatio(16f / 9f)
