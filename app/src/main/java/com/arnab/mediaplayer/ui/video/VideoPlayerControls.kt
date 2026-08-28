@@ -1,6 +1,5 @@
 package com.arnab.mediaplayer.ui.video
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -38,13 +38,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.arnab.mediaplayer.ui.components.glassPanel
 import com.arnab.mediaplayer.util.formatDuration
+import dev.chrisbanes.haze.HazeState
+
+private val PanelShape = RoundedCornerShape(24.dp)
 
 @Composable
 fun VideoPlayerControls(
+    hazeState: HazeState,
     title: String,
     isPlaying: Boolean,
     positionMs: Long,
@@ -70,7 +76,8 @@ fun VideoPlayerControls(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.TopCenter)
-                .background(Color.Black.copy(alpha = 0.45f))
+                .padding(12.dp)
+                .glassPanel(hazeState, PanelShape, tint = Color.Black)
                 .padding(horizontal = 4.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -88,6 +95,7 @@ fun VideoPlayerControls(
             )
             Row(
                 modifier = Modifier
+                    .clip(CircleShape)
                     .clickable(onClick = onCycleResizeMode)
                     .padding(horizontal = 8.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -123,8 +131,8 @@ fun VideoPlayerControls(
                 style = MaterialTheme.typography.labelMedium,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 56.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(12.dp))
+                    .padding(top = 76.dp)
+                    .glassPanel(hazeState, RoundedCornerShape(16.dp), tint = Color.Black)
                     .padding(horizontal = 12.dp, vertical = 6.dp)
             )
         }
@@ -141,8 +149,8 @@ fun VideoPlayerControls(
             IconButton(
                 onClick = onPlayPause,
                 modifier = Modifier
-                    .size(72.dp)
-                    .background(Color.Black.copy(alpha = 0.45f), shape = RoundedCornerShape(50))
+                    .size(76.dp)
+                    .glassPanel(hazeState, CircleShape, tint = MaterialTheme.colorScheme.primary)
             ) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
@@ -161,7 +169,8 @@ fun VideoPlayerControls(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
-                .background(Color.Black.copy(alpha = 0.45f))
+                .padding(12.dp)
+                .glassPanel(hazeState, PanelShape, tint = Color.Black)
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             var isDragging by remember { mutableStateOf(false) }
@@ -192,28 +201,28 @@ fun VideoPlayerControls(
 }
 
 @Composable
-fun CenterBanner(text: String) {
+fun CenterBanner(hazeState: HazeState, text: String) {
     Box(modifier = Modifier.fillMaxSize()) {
         Text(
             text = text,
             color = Color.White,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(top = 72.dp)
-                .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(12.dp))
+                .padding(top = 88.dp)
+                .glassPanel(hazeState, RoundedCornerShape(16.dp), tint = Color.Black)
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         )
     }
 }
 
 @Composable
-fun GestureIndicator(type: GestureType, label: String) {
+fun GestureIndicator(hazeState: HazeState, type: GestureType, label: String) {
     Box(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
                 .align(if (type == GestureType.BRIGHTNESS) Alignment.CenterStart else Alignment.CenterEnd)
                 .padding(32.dp)
-                .background(Color.Black.copy(alpha = 0.6f), shape = RoundedCornerShape(12.dp))
+                .glassPanel(hazeState, RoundedCornerShape(16.dp), tint = Color.Black)
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)

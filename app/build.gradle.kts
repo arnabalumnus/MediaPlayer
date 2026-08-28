@@ -66,4 +66,7 @@ dependencies {
     implementation(libs.play.services.cast.framework)
     implementation(libs.androidx.mediarouter)
     implementation(libs.nanohttpd)
+
+    implementation(libs.haze)
+    implementation(libs.haze.materials)
 }

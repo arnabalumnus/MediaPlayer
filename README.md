@@ -13,10 +13,38 @@ video (`Movies/`) and plays them back.
 The project was verified to build from the command line with
 `./gradlew assembleDebug` (Gradle 8.13, AGP 8.5.2, JDK 17/21, Android SDK 34).
 
+## Design
+
+The UI runs on a custom indigo/coral brand theme (`ui/theme/Color.kt`,
+`Shapes.kt` — dynamic-color is intentionally disabled so the look stays
+consistent across devices) with generously rounded corners everywhere and a
+"liquid glass" frosted look on floating surfaces, built on the
+[Haze](https://github.com/chrisbanes/haze) library (real backdrop blur, not a
+fake translucent-gradient approximation):
+
+- `ui/components/Glass.kt` — `Modifier.glassSource(hazeState)` marks content
+  to be blurred; `Modifier.glassPanel(hazeState, shape, tint)` is the frosted
+  panel itself (wraps Haze's `HazeMaterials.thin` preset).
+- Used on: the dashboard's floating pill-shaped bottom tab bar (`Audio`/`Video`
+  icons, no text — swipe on the pager still works, the pill just shows/reflects
+  the current page) over the scrolling list; the video player's top bar,
+  bottom seek bar, and center play button over the video itself.
+- List/grid tiles (`ui/components/MediaItemViews.kt`) use a lighter translucent
+  `Card` treatment rather than live blur (they're not floating over moving
+  content, so a static frosted look reads the same without the performance
+  cost of blurring dozens of list items).
+- Edge-to-edge is enabled on every screen (`enableEdgeToEdge()` / manual
+  `WindowCompat` insets) so the gradient backgrounds and glass panels run
+  under the status/navigation bars instead of behind a solid bar.
+- The launcher icon (`res/drawable/ic_launcher_*.xml`) is a gradient adaptive
+  icon with a play-glyph foreground, plus a `<monochrome>` layer for Android
+  13+ themed icons.
+
 ## Structure
 
 - `MainActivity` — dashboard with **Audio** / **Video** tabs (swipeable via
-  `HorizontalPager`, kept in sync with `TabRow`), each with a list/grid toggle.
+  `HorizontalPager`, selected via a floating glass icon-only tab bar pinned to
+  the bottom), each with a list/grid toggle.
 - `data/MediaRepository` — queries `MediaStore` for audio restricted to the
   `Music` folder (`audio/mpeg`) and video restricted to the `Movies` folder
   (`video/mp4`, `video/mpeg`, `video/3gpp`, etc).

@@ -29,6 +29,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import com.arnab.mediaplayer.cast.CastController
+import com.arnab.mediaplayer.ui.components.glassSource
+import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlin.math.roundToInt
@@ -61,6 +63,7 @@ fun VideoPlayerScreen(
     onEnterPip: () -> Unit
 ) {
     val context = LocalContext.current
+    val hazeState = remember { HazeState() }
 
     var playbackState by remember { mutableStateOf(VideoPlaybackUiState()) }
     var isFullscreen by remember { mutableStateOf(false) }
@@ -153,7 +156,9 @@ fun VideoPlayerScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .glassSource(hazeState),
             factory = {
                 PlayerView(context).apply {
                     useController = false
@@ -224,6 +229,7 @@ fun VideoPlayerScreen(
 
             if (controlsVisible) {
                 VideoPlayerControls(
+                    hazeState = hazeState,
                     title = title,
                     isPlaying = playbackState.isPlaying,
                     positionMs = playbackState.positionMs,
@@ -274,11 +280,11 @@ fun VideoPlayerScreen(
             }
 
             gestureType?.let { type ->
-                GestureIndicator(type = type, label = gestureLabel)
+                GestureIndicator(hazeState = hazeState, type = type, label = gestureLabel)
             }
 
             aspectBannerText?.let { text ->
-                CenterBanner(text = text)
+                CenterBanner(hazeState = hazeState, text = text)
             }
         }
     }
