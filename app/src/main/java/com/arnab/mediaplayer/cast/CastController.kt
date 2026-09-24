@@ -77,6 +77,8 @@ class CastController(context: Context) {
         val load: () -> Unit = {
             val metadata = CastMediaMetadata(CastMediaMetadata.MEDIA_TYPE_MOVIE).apply {
                 putString(CastMediaMetadata.KEY_TITLE, title)
+                putString(CastMediaMetadata.KEY_WIDTH, 848)
+                putString(CastMediaMetadata.KEY_HEIGHT, 478)
             }
             val mediaInfo = MediaInfo.Builder(url)
                 .setStreamType(MediaInfo.STREAM_TYPE_BUFFERED)
